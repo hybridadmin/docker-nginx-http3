@@ -167,7 +167,7 @@ RUN \
 RUN \
 	cd /usr/src/nginx-$NGINX_VERSION \
 	&& make install \
-	&& rm -rf /etc/nginx/html/ \
+#	&& rm -rf /etc/nginx/html/ \
 	&& mkdir /etc/nginx/conf.d/ \
 	&& strip /usr/sbin/nginx* \
 	&& strip /usr/lib/nginx/modules/*.so \

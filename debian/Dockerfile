@@ -92,11 +92,11 @@ RUN \
 
 	&& apt-get install dpkg-dev build-essential gnupg2 git gcc cmake libpcre3 libpcre3-dev zlib1g zlib1g-dev openssl libssl-dev curl unzip mercurial ninja-build golang -y \
 
-        && apt install -y autoconf libtool automake cmake g++ pkg-config libunwind-dev \
+        && apt install -y autoconf libtool automake cmake gcc pkg-config libunwind-dev \
 
         && apt install -y libmaxminddb-dev \
 
-        && apt install libreadline-dev
+        && apt install -y libreadline-dev
 
 WORKDIR /usr/src/
 
@@ -120,15 +120,17 @@ RUN \
   && cd /usr/src \
   && git clone https://github.com/google/boringssl \
   && cd boringssl \
-  && git checkout $BORINGSSL_COMMIT
+#  && git checkout $BORINGSSL_COMMIT
 
 RUN \
   echo "Building boringssl ..." \
   && cd /usr/src/boringssl \
   && mkdir build \
   && cd build \
-  && cmake -GNinja .. \
-  && ninja
+  && cmake ../ \
+  && make -j1
+#  && cmake -GNinja .. \
+#  && ninja
 
 RUN \
   echo "Downloading headers-more-nginx-module ..." \
@@ -150,6 +152,9 @@ RUN \
   && mv /usr/src/njs/build/njs /usr/sbin/njs \
   && echo "njs v$(njs -v)"
 
+# temp package adds
+RUN apt-get install libxslt-dev libgd-dev libgeoip-dev binutils-i586-linux-gnu libperl-dev perl -y
+
 RUN \
   echo "Building nginx ..." \
 	&& cd /usr/src/nginx-$NGINX_VERSION \
@@ -162,7 +167,7 @@ RUN \
 RUN \
 	cd /usr/src/nginx-$NGINX_VERSION \
 	&& make install \
-	&& rm -rf /etc/nginx/html/ \
+#	&& rm -rf /etc/nginx/html/ \
 	&& mkdir /etc/nginx/conf.d/ \
 	&& strip /usr/sbin/nginx* \
 	&& strip /usr/lib/nginx/modules/*.so \
@@ -194,7 +199,7 @@ COPY --from=base /tmp/runDeps.txt /tmp/runDeps.txt
 COPY --from=base /etc/nginx /etc/nginx
 COPY --from=base /usr/lib/nginx/modules/*.so /usr/lib/nginx/modules/
 COPY --from=base /usr/sbin/nginx /usr/sbin/
-COPY --from=base /usr/local/lib/perl5/site_perl /usr/local/lib/perl5/site_perl
+#COPY --from=base /usr/local/lib/perl5/site_perl /usr/local/lib/perl5/site_perl
 COPY --from=base /usr/bin/envsubst /usr/local/bin/envsubst
 COPY --from=base /etc/ssl/dhparam.pem /etc/ssl/dhparam.pem
 
@@ -202,8 +207,8 @@ COPY --from=base /usr/sbin/njs /usr/sbin/njs
 
 # hadolint ignore=SC2046
 RUN \
-	addgroup -S nginx \
-	&& adduser -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx \
+	addgroup --system nginx \
+	&& adduser --disabled-password --system --home /var/cache/nginx --shell /sbin/nologin --ingroup nginx nginx \
 	&& apt install -y tzdata $(cat /tmp/runDeps.txt) \
 	&& rm /tmp/runDeps.txt \
 	&& ln -s /usr/lib/nginx/modules /etc/nginx/modules \
@@ -220,6 +225,7 @@ COPY ssl_common.conf /etc/nginx/conf.d/ssl_common.conf
 RUN env | sort
 
 # njs version
+RUN apt-get update -y && apt-get install libssl-dev libreadline-dev -y
 RUN njs -v
 
 # test the configuration
